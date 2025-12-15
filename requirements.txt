@@ -13,6 +13,7 @@ sqlalchemy==2.0.23
 
 # Validation
 pydantic==2.5.0
+email-validator>=2.0.0
 
 # Environment
 python-dotenv==1.0.0
