@@ -13,14 +13,13 @@ aiosqlite==0.19.0
 
 # Validation
 pydantic==2.5.0
-email-validator>=2.0.0
 
 # Environment
 python-dotenv==1.0.0
 
 # Image Generation
 google-genai>=0.2.0
-pillow>=10.3.0
+pillow==10.1.0
 # replicate==0.25.0  # Optional - no longer used, replaced with google-genai
 
 # File Processing

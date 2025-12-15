@@ -13,20 +13,7 @@ load_dotenv()
 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 
-# Lazy initialization of genai_client to avoid errors at import time
-_genai_client = None
-
-def get_genai_client():
-    """Get or create the genai client (lazy initialization)"""
-    global _genai_client
-    if _genai_client is None:
-        if not google_api_key:
-            raise ValueError(
-                "GOOGLE_API_KEY environment variable is not set. "
-                "Please set it in Railway's environment variables."
-            )
-        _genai_client = genai.Client(api_key=google_api_key)
-    return _genai_client
+genai_client = genai.Client(api_key=google_api_key)
 
 OUTPUT_DIR = "scene_images"
 IMAGE_EXT = "png"
@@ -106,8 +93,7 @@ class ImageGenerator:
                     image_config=types.ImageConfig(aspect_ratio=self.aspect_ratio),
                 )
 
-                client = get_genai_client()
-                response = client.models.generate_content(
+                response = genai_client.models.generate_content(
                     model=IMAGE_GENERATION_MODEL,
                     contents=contents,
                     config=config,

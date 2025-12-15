@@ -30,8 +30,7 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 // API Configuration
-// Use relative URL for production (same domain) or localhost for development
-const API_BASE_URL = window.location.origin; // Automatically uses current domain
+const API_BASE_URL = 'http://localhost:8000'; // Change to your backend URL
 let authToken = localStorage.getItem('authToken');
 let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 let currentStoryId = null; // Track the currently loaded story
@@ -324,7 +323,7 @@ function makeAPICall(endpoint, options = {}) {
         // Better error handling
         console.error('API call error:', error);
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.name === 'TypeError') {
-            const errorMsg = 'Cannot connect to server. Please check your connection.';
+            const errorMsg = 'Cannot connect to server. Make sure the backend is running on http://localhost:8000';
             console.error(errorMsg);
             // Show user-friendly error in chat feed if it exists
             const chatFeed = document.getElementById('chat-feed');
@@ -937,6 +936,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Display the story using existing render function
             renderStoryScenes(storyData);
 
+            // Explicitly trigger text scaling for suggestions after a short delay
+            // This ensures logic from renderStoryScenes has time to mount, then we double-check fit
+            setTimeout(() => {
+                const bookWrap = document.querySelector(`.book-container-wrap[data-story-id="${storyData.story_id}"]`);
+                if (bookWrap) {
+                    const contentArea = bookWrap.querySelector(`#book-content-area-${storyData.story_id}`);
+                    if (contentArea && window.fitTextToContainer) {
+                        window.fitTextToContainer(contentArea);
+                    }
+                }
+            }, 300);
+
         } catch (error) {
             console.error('Error loading suggestion:', error);
             showToast('Failed to load suggestion. Please try again.', 'error');
@@ -1211,6 +1222,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             addBubble('user', userContent || "Analyzing document...");
             mainInput.value = '';
+            // Reset input size
+            if (mainInput) {
+                mainInput.style.height = 'auto'; // Reset to default/auto height
+                mainInput.style.overflowY = 'hidden'; // Restore hidden overflow
+            }
 
             // Call API to generate scenes
             const style = currentStyleLabel?.textContent || 'Cinematic';
@@ -1491,8 +1507,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Helper to fit text to container
-    window.fitTextToContainer = function (element) {
+    window.fitTextToContainer = function (element, attempt = 0) {
         if (!element) return;
+
+        // If not attached or hidden, try again briefly
+        if (element.clientHeight === 0) {
+            if (attempt < 5) {
+                requestAnimationFrame(() => window.fitTextToContainer(element, attempt + 1));
+            }
+            return;
+        }
 
         // Find the paragraph with the scene text (it's usually the <p class="scene-desc">)
         const sceneText = element.querySelector('.scene-desc');
@@ -1509,9 +1533,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const minSize = 0.7; // Don't go below this
 
         // Loop while content is bigger than container
-        while (element.scrollHeight > element.clientHeight && currentSize > minSize) {
+        // Safety break counter
+        let loops = 0;
+        while (element.scrollHeight > element.clientHeight && currentSize > minSize && loops < 50) {
             currentSize -= 0.05;
             sceneText.style.fontSize = `${currentSize}rem`;
+            loops++;
         }
     };
 
@@ -1628,7 +1655,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             const initialContent = bookWrap.querySelector(`#book-content-area-${storyData.story_id}`);
             if (initialContent) window.fitTextToContainer(initialContent);
-        }, 50);
+        }, 300);
+
+        // Add ResizeObserver to handle sidebar toggles and window resizing
+        if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    // When container size changes, re-run text fitting
+                    window.fitTextToContainer(entry.target);
+                }
+            });
+            const contentArea = bookWrap.querySelector(`#book-content-area-${storyData.story_id}`);
+            if (contentArea) resizeObserver.observe(contentArea);
+        }
 
         const updatePage = () => {
             // Use stored storyData from bookWrap, but ALWAYS use the original title for the book canvas

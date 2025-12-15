@@ -769,33 +769,3 @@ if os.path.exists("output_scenes"):
 if os.path.exists("suggestion"):
     app.mount("/suggestion", StaticFiles(directory="suggestion"), name="suggestion")
 
-# Serve frontend static files (CSS, JS)
-if os.path.exists("styles"):
-    app.mount("/styles", StaticFiles(directory="styles"), name="styles")
-if os.path.exists("js"):
-    app.mount("/js", StaticFiles(directory="js"), name="js")
-
-# Serve index.html for root and all non-API routes (SPA routing)
-from fastapi.responses import FileResponse
-@app.get("/")
-async def serve_index():
-    """Serve the main HTML file"""
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    raise HTTPException(status_code=404, detail="index.html not found")
-
-# Catch-all route for SPA - serve index.html for any non-API route
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    """Serve index.html for SPA routing (catch-all for non-API routes)"""
-    # Don't interfere with API routes
-    if full_path.startswith("api/") or full_path.startswith("scene_images/") or \
-       full_path.startswith("output_scenes/") or full_path.startswith("suggestion/") or \
-       full_path.startswith("styles/") or full_path.startswith("js/"):
-        raise HTTPException(status_code=404, detail="Not found")
-    
-    # Serve index.html for all other routes (SPA routing)
-    if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    raise HTTPException(status_code=404, detail="index.html not found")
-
